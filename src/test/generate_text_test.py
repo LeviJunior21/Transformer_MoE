@@ -16,6 +16,7 @@ config = {
     "num_experts_per_token": 2,
     "emb_dim_moe": 64,
     "apply_rope": False,
+    "rope_base": 10_000,
     "max_iterations": 50000,
     "learning_rate": 0.0003,
     "weight_decay": 0.1,
