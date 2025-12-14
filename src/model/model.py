@@ -1,25 +1,8 @@
 import torch
 
 
-class RoPE(torch.nn.Module):
-    def apply_rope(x, cos, sin):
-        batch_size, num_heads, seq_len, head_dim = x.shape
-        assert head_dim % 2 == 0
-
-        x1 = x[..., : head_dim // 2]
-        x2 = x[..., head_dim // 2:]
-
-        cos = cos[:seq_len, :].unsqueeze(0).unsqueeze(0)
-        sin = sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
-
-        rotated = torch.cat((-x2, x1), dim=-1)
-        x_rotated = (x * cos) + (rotated * sin)
-
-        return x_rotated.to(dtype=x.dtype)
-
-
 class GroupedQueryAttention(torch.nn.Module):
-    def __init__(self, dim_in, dim_out, context_length, num_heads, num_kv_groups, apply_rope, bias=False):
+    def __init__(self, dim_in, dim_out, context_length, num_heads, num_kv_groups, apply_rope, cos_rope, sin_rope, bias=False):
         super().__init__()
 
         self.dim_out = dim_out
@@ -28,6 +11,7 @@ class GroupedQueryAttention(torch.nn.Module):
         self.num_kv_groups = num_kv_groups
         self.head_dim = dim_out // num_heads
         self.group_size = self.num_heads // self.num_kv_groups
+        self.cos_rope, self.sin_rope = cos_rope, sin_rope
 
         assert dim_out % num_heads == 0
         assert num_heads % num_kv_groups == 0
@@ -36,14 +20,22 @@ class GroupedQueryAttention(torch.nn.Module):
         self.wk = torch.nn.Linear(dim_in, num_kv_groups * self.head_dim, bias)
         self.wv = torch.nn.Linear(dim_in, num_kv_groups * self.head_dim, bias)
         self.wo_proj = torch.nn.Linear(dim_out, dim_out, bias)
-        
-        self.rope = RoPE()
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1).bool())
 
-        self.register_buffer(
-            "mask",
-            torch.triu(torch.ones(context_length, context_length), diagonal=1)
-        )
 
+    def apply_rope_embedding(self, x, cos, sin):
+        batch_size, num_heads, seq_len, head_dim = x.shape
+        assert head_dim % 2 == 0
+
+        x1 = x[..., : head_dim // 2]
+        x2 = x[..., head_dim // 2:]
+        cos = cos[:seq_len, :].unsqueeze(0).unsqueeze(0)
+        sin = sin[:seq_len, :].unsqueeze(0).unsqueeze(0)
+        rotated = torch.cat((-x2, x1), dim=-1)
+        x_rotated = (x * cos) + (rotated * sin)
+
+        return x_rotated.to(dtype=x.dtype)
+    
 
     def forward(self, x):
         batch, num_tokens, d_in = x.shape
@@ -51,23 +43,24 @@ class GroupedQueryAttention(torch.nn.Module):
         keys = self.wk(x)
         values = self.wv(x)
 
-        queries = queries.view(batch, num_tokens, self.num_heads, self.head_dim)
-        keys = keys.view(batch, num_tokens, self.num_kv_groups, self.head_dim)
-        values = values.view(batch, num_tokens,self.num_kv_groups,self.head_dim)
-        
-        #queries = self.rope.apply_rope(queries, cos, sin)
-        #keys = self.rope.apply_rope(keys, cos, sin)
+        queries = queries.view(batch, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(batch, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        values = values.view(batch, num_tokens,self.num_kv_groups,self.head_dim).transpose(1, 2)
 
-        queries = queries.transpose(1, 2)
-        keys = keys.transpose(1, 2).repeat_interleave(self.group_size, dim=1)
-        values = values.transpose(1, 2).repeat_interleave(self.group_size,dim=1)
+        if self.apply_rope:
+            queries = self.apply_rope_embedding(queries, self.cos_rope, self.sin_rope)
+            keys = self.apply_rope_embedding(keys, self.cos_rope, self.sin_rope)
+
+        keys = keys.repeat_interleave(self.group_size, dim=1)
+        values = values.repeat_interleave(self.group_size, dim=1)
 
         attention = queries @ keys.transpose(2, 3)
         attention.masked_fill_(
-            self.mask.bool()[:num_tokens, :num_tokens],
+            self.mask[:num_tokens, :num_tokens],
             -torch.inf
         )
-        causal_attention = torch.softmax(attention / keys.shape[-1]**0.5,dim=-1)
+        scale = self.head_dim ** -0.5
+        causal_attention = torch.softmax(attention * scale,dim=-1)
         assert keys.shape[-1] == self.head_dim
 
         context_vec = causal_attention @ values
@@ -175,7 +168,7 @@ class FeedForward(torch.nn.Module):
 
 
 class TransformerBlockGQA(torch.nn.Module):
-    def __init__(self, context_length, dim_in, dim_out, num_heads, num_kv_groups, apply_rope, num_experts, num_experts_per_token, emb_dim_moe, bias=False):
+    def __init__(self, context_length, dim_in, dim_out, num_heads, num_kv_groups, apply_rope, num_experts, num_experts_per_token, emb_dim_moe, cos_rope, sin_rope, bias=False):
         super().__init__()
         self.num_experts = num_experts
         self.emb_dim_moe = emb_dim_moe
@@ -189,6 +182,8 @@ class TransformerBlockGQA(torch.nn.Module):
             num_kv_groups=num_kv_groups,
             context_length=context_length,
             apply_rope=apply_rope,
+            cos_rope=cos_rope, 
+            sin_rope=sin_rope,
             bias=bias
         )
 
@@ -245,6 +240,12 @@ class Transformer(torch.nn.Module):
             embedding_dim=config["embedding_dim"]
         )
 
+        cos_rope, sin_rope = self.compute_rope_params(
+            head_dim=config["embedding_dim"] // config["num_heads"],
+            theta_base=config["rope_base"],
+            context_length=config["context_length"]
+        )
+
         self.transformer_blocks = torch.nn.Sequential(*[
             TransformerBlockGQA(
                 context_length=config["context_length"],
@@ -256,6 +257,8 @@ class Transformer(torch.nn.Module):
                 num_experts=config["num_experts"],
                 num_experts_per_token=config["num_experts_per_token"],
                 emb_dim_moe=config["emb_dim_moe"],
+                cos_rope=cos_rope.to(device),
+                sin_rope=sin_rope.to(device),
                 bias=config["bias"],
                 
             )
@@ -272,6 +275,19 @@ class Transformer(torch.nn.Module):
             config["vocab_size"],
             bias=config["bias"]
         )
+
+
+    def compute_rope_params(self, head_dim, theta_base=10_000, context_length=4096, dtype=torch.float32):
+        assert head_dim % 2 == 0, "Embedding dimension must be even"
+    
+        inv_freq = 1.0 / (theta_base ** (torch.arange(0, head_dim, 2, dtype=dtype)[: (head_dim // 2)].float() / head_dim))
+        positions = torch.arange(context_length, dtype=dtype)    
+        angles = positions.unsqueeze(1) * inv_freq.unsqueeze(0)
+        angles = torch.cat([angles, angles], dim=1)
+        cos = torch.cos(angles)
+        sin = torch.sin(angles)
+
+        return cos, sin
 
 
     def forward(self, x):
