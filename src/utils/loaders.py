@@ -3,35 +3,65 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 
-class Dataset_GPT(Dataset):
-    def __init__(self, text, tokenizer, stride, max_length, set):
-        self.input_ids = []
-        self.target_ids = []
+class DatasetGPT(Dataset):
+    def __init__(self, text, tokenizer, max_length, stride, set_name):
+        allowed_special = {"<|endoftext|>"}
+        self.tokens = tokenizer.encode(text, allowed_special=allowed_special)
 
-        allowed_special = { '<|endoftext|>' }
-        tokens = tokenizer.encode(text, allowed_special=allowed_special)
+        self.max_length = max_length
+        self.stride = stride
+        self.set_name = set_name
 
-        for i in range(0, len(tokens) - max_length, stride):
-            self.input_ids.append(torch.tensor(tokens[i: i + max_length]))
-            self.target_ids.append(torch.tensor(tokens[i+1: i+max_length + 1]))
-        
-        print(f"Dataset de {set} está pronto!")
-
-
-    def __getitem__(self, idx):
-        return self.input_ids[idx], self.target_ids[idx]
+        print(
+            f"Dataset {set_name} pronto | "
+            f"Tokens: {len(self.tokens)} | "
+            f"Amostras: {self.__len__()}"
+        )
 
     def __len__(self):
-        return len(self.input_ids)
-    
+        return max(0, (len(self.tokens) - self.max_length - 1) // self.stride)
 
-def create_dataset(text, stride, max_length, shuffle, drop_last, tokenizer, num_workers, batch_size, set):
-    dataset = Dataset_GPT(
+    def __getitem__(self, idx):
+        start = idx * self.stride
+        end = start + self.max_length
+
+        x = torch.tensor(self.tokens[start:end], dtype=torch.long)
+        y = torch.tensor(self.tokens[start + 1:end + 1], dtype=torch.long)
+
+        return x, y
+
+
+def load_file(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def print_loader_info(title, loader):
+    x, _ = next(iter(loader))
+    print(f"- {title}")
+    print(f"\tTotal de amostras: {len(loader.dataset)}")
+    print(f"\tTokens por amostra: {x.shape[1]}")
+    print(f"\tBatch size: {loader.batch_size}")
+    print(f"\tNúmero de batches: {len(loader)}")
+
+
+def create_dataloader(
+    text,
+    tokenizer,
+    max_length,
+    stride,
+    batch_size,
+    shuffle,
+    drop_last,
+    num_workers,
+    set_name,
+):
+    dataset = DatasetGPT(
         text=text,
         tokenizer=tokenizer,
-        stride=stride,
         max_length=max_length,
-        set=set
+        stride=stride,
+        set_name=set_name,
     )
 
     dataloader = DataLoader(
@@ -40,81 +70,72 @@ def create_dataset(text, stride, max_length, shuffle, drop_last, tokenizer, num_
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=True,
     )
 
-    print(f"Dataloader de {set} está pronto!")
+    print(f"Dataloader {set_name} pronto!")
     return dataloader
 
 
-def load_file(file_path):
-    with open(file_path, 'r',encoding='utf-8') as file:
-        content = file.read()
-    return content
+def get_loaders(
+    data_path,
+    tokenizer,
+    max_length=256,
+    batch_size=4,
+    num_workers=2,
+    stride=None,
+):
+    # STRIDE SEGURO PARA LLM
+    if stride is None:
+        stride = max_length
 
+    print("Carregando arquivos...")
+    train_text = load_file(os.path.join(data_path, "train.txt"))
+    val_text = load_file(os.path.join(data_path, "val.txt"))
+    test_text = load_file(os.path.join(data_path, "test.txt"))
 
-def print_loader_info(title, loader, init=False):
-    print(f"- {title}")
-    print(f"\tTotal de amostras: {loader.dataset.__len__()}")
-    print(f"\tTokens em cada amostra: {len(loader.dataset.__getitem__(0)[0])}")
-    print(f"\tNúmero de batches: {len(loader)}")
-    print(f"\tNúmero de amostras por batch: {loader.batch_size}")
+    print("Arquivos carregados.\n")
 
-
-def get_loaders(data_path, tokenizer, max_length = 256, batch_sz = 10, num_workers = 4, stride=1):
-    train_data = load_file(os.path.join(data_path, "train.txt"))
-    test_data = load_file(os.path.join(data_path, "test.txt"))
-    val_data = load_file(os.path.join(data_path, "val.txt"))
-
-    print("Arquivos carregados!\n")
-    
-    train_loader = create_dataset(
-        text=train_data,
+    train_loader = create_dataloader(
+        text=train_text,
+        tokenizer=tokenizer,
         max_length=max_length,
         stride=stride,
-        batch_size=batch_sz,
-        num_workers=num_workers,
-        tokenizer=tokenizer,
-        drop_last=True,
+        batch_size=batch_size,
         shuffle=True,
-        set="TREINAMENTO"
+        drop_last=True,
+        num_workers=num_workers,
+        set_name="TREINAMENTO",
     )
 
-    print("Train Loader está pronto!")
-
-    test_loader = create_dataset(
-        text=test_data,
+    val_loader = create_dataloader(
+        text=val_text,
+        tokenizer=tokenizer,
         max_length=max_length,
         stride=stride,
-        batch_size=batch_sz,
-        num_workers=num_workers,
-        tokenizer=tokenizer,
+        batch_size=batch_size,
+        shuffle=False,
         drop_last=True,
-        shuffle=True,
-        set="TESTE"
+        num_workers=num_workers,
+        set_name="VALIDAÇÃO",
     )
-    
-    print("Test Loader está pronto!")
 
-    val_loader = create_dataset(
-        text=val_data,
+    test_loader = create_dataloader(
+        text=test_text,
+        tokenizer=tokenizer,
         max_length=max_length,
         stride=stride,
-        batch_size=batch_sz,
-        num_workers=num_workers,
-        tokenizer=tokenizer,
+        batch_size=batch_size,
+        shuffle=False,
         drop_last=True,
-        shuffle=True,
-        set="VALIDAÇÃO"
+        num_workers=num_workers,
+        set_name="TESTE",
     )
-    
-    print("Val Loader está pronto!")
 
-    
-    print("\n")
+    print()
     print_loader_info("Treino", train_loader)
-    print_loader_info("Teste", test_loader)
     print_loader_info("Validação", val_loader)
-    print("\n")
-    
-    return train_loader, test_loader, val_loader
+    print_loader_info("Teste", test_loader)
+    print()
+
+    return train_loader, val_loader, test_loader
