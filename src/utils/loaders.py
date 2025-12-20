@@ -39,7 +39,8 @@ def create_dataset(text, stride, max_length, shuffle, drop_last, tokenizer, num_
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
-        num_workers=num_workers
+        num_workers=num_workers,
+        pin_memory=True
     )
 
     print(f"Dataloader de {set} está pronto!")
@@ -79,6 +80,8 @@ def get_loaders(data_path, tokenizer, max_length = 256, batch_sz = 10, num_worke
         set="TREINAMENTO"
     )
 
+    print("Train Loader está pronto!")
+
     test_loader = create_dataset(
         text=test_data,
         max_length=max_length,
@@ -90,6 +93,8 @@ def get_loaders(data_path, tokenizer, max_length = 256, batch_sz = 10, num_worke
         shuffle=True,
         set="TESTE"
     )
+    
+    print("Test Loader está pronto!")
 
     val_loader = create_dataset(
         text=val_data,
@@ -102,6 +107,9 @@ def get_loaders(data_path, tokenizer, max_length = 256, batch_sz = 10, num_worke
         shuffle=True,
         set="VALIDAÇÃO"
     )
+    
+    print("Val Loader está pronto!")
+
     
     print("\n")
     print_loader_info("Treino", train_loader)
