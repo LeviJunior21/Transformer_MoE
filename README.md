@@ -55,7 +55,9 @@ sudo usermod -aG docker $USER
 
 sudo docker build -t transformer_moe .
 sudo docker run --rm -it transformer_moe
-```**Principais bibliotecas:**
+```
+
+**Principais bibliotecas:**
 - **selenium** - Raspagem de livros em português
 - **torch** – Treinamento do modelo
 - **tiktoken** – Tokenização eficiente
