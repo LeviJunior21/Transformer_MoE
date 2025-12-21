@@ -67,7 +67,7 @@ CONFIG = {
     "eval_iter": 5,
     "start_context": "Se o jardim",
     "save_wdb": True,
-    "save_freq_wdb": 10000,
+    "save_freq_wdb": 500000,
     "user": "levi-pereira-junior-ufcg",
     "project": "transformer_tcc_project",
     "name": "transformer_tcc_base_project",
