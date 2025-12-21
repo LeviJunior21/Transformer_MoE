@@ -1,0 +1,45 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            ei9aaulnxqwd7mgwpjfgq6ttd8aox6kg:
+                cpu_count: 8
+                cpu_count_logical: 12
+                disk:
+                    /:
+                        total: "250375106560"
+                        used: "228841979904"
+                email: levi.pereira.junior@ccc.ufcg.edu.br
+                executable: /usr/bin/python3.10
+                git:
+                    commit: 738e41fdf041cd1e08d9eeb3b0e9552faddd8c21
+                    remote: https://github.com/LeviJunior21/Transformer_MoE.git
+                host: Levi-Vivobook-ASUS
+                memory:
+                    total: "7993745408"
+                os: Linux-5.15.0-91-generic-x86_64-with-glibc2.35
+                program: -m train.main
+                python: CPython 3.10.12
+                root: /home/levi/tcc/Transformer_MoE
+                startedAt: "2025-12-21T02:27:06.183823Z"
+                writerId: ei9aaulnxqwd7mgwpjfgq6ttd8aox6kg
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+                - 105
+            "2":
+                - 1
+                - 5
+                - 53
+                - 105
+            "3":
+                - 13
+                - 14
+            "4": 3.10.12
+            "5": 0.23.1
+            "12": 0.23.1
+            "13": linux-x86_64

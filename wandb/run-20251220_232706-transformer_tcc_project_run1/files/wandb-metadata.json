@@ -1,0 +1,26 @@
+{
+  "os":  "Linux-5.15.0-91-generic-x86_64-with-glibc2.35",
+  "python":  "CPython 3.10.12",
+  "startedAt":  "2025-12-21T02:27:06.183823Z",
+  "program":  "-m train.main",
+  "git":  {
+    "remote":  "https://github.com/LeviJunior21/Transformer_MoE.git",
+    "commit":  "738e41fdf041cd1e08d9eeb3b0e9552faddd8c21"
+  },
+  "email":  "levi.pereira.junior@ccc.ufcg.edu.br",
+  "root":  "/home/levi/tcc/Transformer_MoE",
+  "host":  "Levi-Vivobook-ASUS",
+  "executable":  "/usr/bin/python3.10",
+  "cpu_count":  8,
+  "cpu_count_logical":  12,
+  "disk":  {
+    "/":  {
+      "total":  "250375106560",
+      "used":  "228841979904"
+    }
+  },
+  "memory":  {
+    "total":  "7993745408"
+  },
+  "writerId":  "ei9aaulnxqwd7mgwpjfgq6ttd8aox6kg"
+}

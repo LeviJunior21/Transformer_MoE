@@ -1,23 +1,20 @@
 # PyTorch
---index-url https://download.pytorch.org/whl/cu126
 torch
 
-#Tokenizer
+# Tokenizer
 tiktoken
 
-#Dependencias Gerais
-requests  
+# Dependencias gerais
+requests
 tqdm
 
-#sklearning
+# Machine Learning
 scikit-learn
-
-#pandas
 pandas
 
-#Wandb: Weights & Biases
+# Tracking
 wandb
 
-# Raspagem dos dados
+# Raspagem / download
 selenium
-webdriver-manager
+gdown
