@@ -1,7 +1,6 @@
-seaborn
-
 # PyTorch
 torch
+seaborn
 
 # Tokenizer
 tiktoken
