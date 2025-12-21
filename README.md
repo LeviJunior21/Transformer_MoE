@@ -36,7 +36,26 @@ Instale os pacotes necessários com:
 ```bash
 pip install -r requirements.txt
 ```
-**Principais bibliotecas:**
+
+ou
+
+```
+az vm show -d -g MeuGrupo -n minhavm --query publicIps -o tsv
+chmod 600 /home/levi/Downloads/minhavm_key.pem
+ssh -i /home/levi/Downloads/minhavm_key.pem azureuser@20.197.240.84
+yes
+
+git clone https://github.com/LeviJunior21/Transformer_MoE.git
+cd Transformer_MoE
+
+sudo apt update
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+
+sudo docker build -t transformer_moe .
+sudo docker run --rm -it transformer_moe
+```**Principais bibliotecas:**
 - **selenium** - Raspagem de livros em português
 - **torch** – Treinamento do modelo
 - **tiktoken** – Tokenização eficiente
