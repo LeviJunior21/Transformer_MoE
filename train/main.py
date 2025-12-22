@@ -38,9 +38,7 @@ except ImportError:
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(f"Usando dispositivo: {device.type}")
 
-
 CONFIG = {
-    "tokenizer": tokenizer,
     "vocab_size": tokenizer.n_vocab,
     "embedding_dim": 512,
     "context_length": 256,
@@ -67,11 +65,11 @@ CONFIG = {
     "eval_iter": 5,
     "start_context": "Se o jardim",
     "save_wdb": True,
-    "save_freq_wdb": 500000,
+    "save_freq_wdb": 10000,
     "user": "levi-pereira-junior-ufcg",
-    "project": "transformer_tcc_project",
-    "name": "transformer_tcc_base_project",
-    "run_id": "transformer_tcc_project_run1",
+    "project": "transformer_tcc_definitivo",
+    "name": "transformer_tcc_definitivo_base",
+    "run_id": "transformer_tcc_definitivo-run1",
     "version": "v0",
     "file_name": "mini_mlp.pth"
 }
