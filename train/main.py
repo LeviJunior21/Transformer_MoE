@@ -59,7 +59,7 @@ CONFIG = {
     "batch_size": 10,
     "max_epochs": 5,
     "num_workers": 2,
-    "stride": 1,
+    "stride": 256,
     "initial_tolerance": None,
     "dtype": torch.float32,
     "device": device,
