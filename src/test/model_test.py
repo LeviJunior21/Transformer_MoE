@@ -17,6 +17,7 @@ CONFIG = {
     "num_experts_per_token": 2,
     "emb_dim_moe": 64,
     "apply_rope": False,
+    "rope_base": 10000,
 
     # Configurações do Treinamento
     "max_iterations": 50000,

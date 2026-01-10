@@ -86,6 +86,22 @@ class LayerNorm(torch.nn.Module):
         return x * self.gama + self.beta
 
 
+class RMSNorm(torch.nn.Module):
+    def __init__(
+        self, embedding_dim: int, epsilon: float = 1e-05
+    ):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.epsilon = epsilon
+        self.scale = torch.nn.Parameter(torch.ones(embedding_dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        assert x.shape[-1] == self.embedding_dim
+        t, dtype = x.float(), x.dtype
+        t = t * torch.rsqrt(torch.mean(t**2, dim=-1, keepdim=True) + self.epsilon)
+        return (t * self.scale).to(dtype)
+
+
 class GELU(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -201,11 +217,11 @@ class TransformerBlockGQA(torch.nn.Module):
                 bias=bias
             )
 
-        self.norm1 = LayerNorm(
+        self.norm1 = RMSNorm(
             embedding_dim=dim_in
         )
 
-        self.norm2 = LayerNorm(
+        self.norm2 = RMSNorm(
             embedding_dim=dim_in
         )
 
@@ -232,6 +248,10 @@ class Transformer(torch.nn.Module):
 
         self.embeddings = torch.nn.Embedding(
             num_embeddings=config["vocab_size"],
+            embedding_dim=config["embedding_dim"]
+        )
+        
+        self.rms_norm = RMSNorm(
             embedding_dim=config["embedding_dim"]
         )
 
@@ -265,7 +285,7 @@ class Transformer(torch.nn.Module):
             for _ in range(config["num_layers"])
         ])
 
-        self.final_norm = LayerNorm(
+        self.final_norm = RMSNorm(
             embedding_dim=config["embedding_dim"],
             epsilon=1e-5
         )
@@ -293,6 +313,7 @@ class Transformer(torch.nn.Module):
     def forward(self, x):
         batch_size, context_length = x.shape
         input_emb = self.embeddings(x)
+        input_emb = self.rms_norm(input_emb)
         
         if not self.apply_rope:
             pos_emb = self.pos_embeddings(torch.arange(context_length, device=self.device))
