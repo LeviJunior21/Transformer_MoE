@@ -27,7 +27,7 @@ def generate_text(model, idx, max_new_tokens, context_size=50, reset=False):
         return idx
 
 
-def generate_text_top(model, prompt, max_new_tokens, tokenizer, device, context_size=50, temperature=0.8, top_k=50, top_p=0.95, repetition_penalty=1.2, tokenizer, device):
+def generate_text_top(model, prompt, max_new_tokens, tokenizer, device, context_size=50, temperature=0.8, top_k=50, top_p=0.95, repetition_penalty=1.2):
     model.eval()
     ids = tokenizer.encode(prompt)
     idx = torch.tensor(ids).unsqueeze(0).to(device)
