@@ -100,20 +100,38 @@ def main(apply_regex=True):
         return
     print(f"Encontrados {len(file_paths)} arquivos em '{RAW_DATA_DIR}'.")
     
+    qtd_palavras_sem_remover_ingles = 0
+    qtd_palavras_removendo_ingles = 0
+
     for filepath in file_paths:
         print(f"\t-> Processando: {os.path.basename(filepath)}")
         try:
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 raw_content = f.read()
+                qtd_palavras_sem_remover_ingles += len(raw_content.split())
                 cleaned_content = clean_gutenberg_text(raw_content)
+                qtd_palavras_removendo_ingles += len(cleaned_content.split())
+                """
+                print("----------------")
+                print(len(raw_content.split()))
+                print(len(cleaned_content.split()))
+                
+                visualizar = "" # input() escrever qualquer caractere para mostrar as diferenças do texto 1 que não estão no segundo texto limpo
+                if visualizar != "":
+                    raw_lines = set(raw_content.splitlines())
+                    cleaned_lines = set(cleaned_content.splitlines())
+                    only_in_raw = raw_lines - cleaned_lines
+                    print("\n".join(only_in_raw))
+                """
                 if cleaned_content:
                     all_cleaned_texts.append(cleaned_content)
         except Exception as e:
             print(f"\t\tAVISO: Falha ao ler ou processar o arquivo {filepath}. Erro: {e}")
 
+    print(f"\nTotal de palavras antes da limpeza do ingles: ~{qtd_palavras_sem_remover_ingles}")
+    print(f"Total de palavras após a limpeza do ingles: ~{qtd_palavras_removendo_ingles}\n")
+    
     consolidated_text = "\n\n".join(all_cleaned_texts)
-    print(f"\t\tTexto limpo com ~{len(cleaned_content.split())} palavras.")
-
     paragraphs_word_counts = []
     paragraphs_valid = []
 
@@ -138,6 +156,7 @@ def main(apply_regex=True):
         return
     
     corpora = "\n\n".join(paragraphs_valid)
+    print("Quantidade de palavras totais para treino, teste e validação", len(corpora.split()))
     
     with open(CONSOLIDATED_TEXT_PATH, 'w', encoding='utf-8') as f:
         f.write(corpora)
