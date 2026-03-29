@@ -290,7 +290,7 @@ class Transformer(torch.nn.Module):
             epsilon=1e-5
         )
 
-        self.out_head = torch.nn.Linear(
+        self.out_final = torch.nn.Linear(
             config["embedding_dim"],
             config["vocab_size"],
             bias=config["bias"]
@@ -321,6 +321,6 @@ class Transformer(torch.nn.Module):
 
         result_transformer_blocks = self.transformer_blocks(input_emb)
         norm = self.final_norm(result_transformer_blocks)
-        logits = self.out_head(norm)
+        logits = self.out_final(norm)
 
         return logits
