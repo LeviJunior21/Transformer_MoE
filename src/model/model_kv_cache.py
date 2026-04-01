@@ -324,7 +324,7 @@ class Transformer(torch.nn.Module):
         input_emb = self.rms_norm(input_emb)
         use_cache = self.transformer_blocks[-1].grouped_query_attention.wk.weight.requires_grad == False or not self.lora_is_training
         
-        if x.shape[1] > 1:
+        if x.shape[1] > 1: 
             self.last_position = 0
             for block in self.transformer_blocks:
                 block.grouped_query_attention.k_cache = None
